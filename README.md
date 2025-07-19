@@ -1,102 +1,148 @@
-Verilog Dual-Core RISC-V System-on-Chip (SoC)
-1. Project Overview
-This repository contains the complete Verilog source code for a functional System-on-Chip (SoC) built around a dual-core RISC-V processor architecture. The primary goal of this project is to demonstrate a multi-core system where two independent CPUs can run separate programs while sharing a common set of hardware peripherals.
+# 🔧 Verilog Dual-Core RISC-V System-on-Chip (SoC)
 
-The SoC features a robust bus architecture with a custom-designed arbiter to manage concurrent access to an APB (Advanced Peripheral Bus) subsystem. This subsystem includes standard communication peripherals: SPI, I2C, and USART. The project is fully synthesizable and comes with a comprehensive testbench that verifies the entire system, from core instruction execution to final peripheral output.
+This project implements a **multi-core RISC-V System-on-Chip (SoC)** in **SystemVerilog**, featuring:
+- Two independent **RISC-V CPU cores**
+- A **shared APB peripheral bus**
+- A **custom round-robin bus arbiter**
+- Memory-mapped access to **SPI**, **I2C**, and **USART** peripherals
+- A comprehensive **testbench** to simulate and verify end-to-end functionality
 
-This project serves as a practical example of key concepts in modern digital design, including multi-core processing, bus arbitration, memory-mapped I/O, and peripheral integration.
+---
 
-2. Core Concepts and Architecture
-The SoC is built on several fundamental digital design concepts that work together to create a functional multi-core system.
+## 📑 Table of Contents
+- [🧠 Project Overview](#-project-overview)
+- [⚙️ Architecture and Design Concepts](#️-architecture-and-design-concepts)
+  - [Dual-Core RISC-V Architecture](#dual-core-risc-v-architecture)
+  - [APB Peripheral Subsystem](#apb-peripheral-subsystem)
+  - [Memory-Mapped I/O (MMIO)](#memory-mapped-io-mmio)
+  - [Bus Arbitration and Interconnect](#bus-arbitration-and-interconnect)
+- [📁 File Structure](#-file-structure)
+- [▶️ How to Run the Simulation](#️-how-to-run-the-simulation)
+- [🔬 Features to Explore in Simulation](#-features-to-explore-in-simulation)
+- [📜 License](#-license)
+- [📬 Contact](#-contact)
 
-a. Dual-Core RISC-V Architecture
-The heart of the SoC is its two independent RISC-V CPU cores, riscv_core and riscv2core.
+---
 
-Independent Execution: Each core has its own internal instruction memory, allowing it to fetch and execute a separate program completely independently of the other core.
+## 🧠 Project Overview
 
-Shared Resources: While the cores run separate instruction streams, they share access to the data bus, which connects them to the peripheral subsystem. This creates a scenario where both cores might need to use a peripheral at the same time, necessitating an arbitration scheme.
+This repository contains a complete and synthesizable SoC designed in Verilog, showcasing a **dual-core RISC-V processor architecture** that runs **two separate programs** concurrently. These cores share access to a **common set of peripherals**—SPI, I2C, and USART—via a **custom bus arbiter** that implements a **round-robin priority mechanism**.
 
-b. APB Peripheral Subsystem
-All peripherals are grouped into a single subsystem (soc_top) that is connected to the main system via a standard APB (Advanced Peripheral Bus). This is a common industry practice that simplifies the design.
+This project is designed to demonstrate:
 
-Address Decoding: The soc_top module contains an address decoder. When a transaction arrives on the APB, the decoder reads the address and generates a select signal (PSEL) for the correct peripheral.
+- Multi-core processor design
+- Shared resource management
+- Memory-mapped peripheral communication
+- SoC simulation and verification flow
 
-Included Peripherals:
+It is suitable for **educational purposes**, **SoC verification practice**, and **understanding digital design concepts** in real-world scenarios.
 
-SPI (Serial Peripheral Interface): A master-only SPI module for high-speed serial communication.
+---
 
-I2C (Inter-Integrated Circuit): A master-only I2C module for two-wire serial communication.
+## ⚙️ Architecture and Design Concepts
 
-USART (Universal Synchronous/Asynchronous Receiver-Transmitter): For standard serial communication.
+### 🧩 Dual-Core RISC-V Architecture
 
-c. Memory-Mapped I/O (MMIO)
-The RISC-V cores do not have special instructions like WRITE_TO_SPI. Instead, they communicate with peripherals using a technique called Memory-Mapped I/O.
+- **Cores**: `riscv_core` and `riscv2core`
+- Each has its own **instruction memory**.
+- Each runs a **completely separate program** (independent PC, ALU, register file).
+- Both share a **common APB bus** for accessing peripherals.
 
-The Concept: Specific memory addresses are assigned to the control and data registers of each peripheral. From the core's perspective, talking to a peripheral is identical to writing to or reading from memory.
+> This setup mimics real-world multi-core systems, where cores execute different tasks but synchronize through shared memory/peripherals.
 
-Execution Flow:
+---
 
-The core executes a standard sw (store word) or lw (load word) instruction.
+### 🧩 APB Peripheral Subsystem
 
-The core's ALU calculates the target memory address.
+- **Module**: `soc_top`
+- Connected to the cores via the **Advanced Peripheral Bus (APB)**.
+- Uses **address decoding logic** to enable peripherals.
 
-The SoC's interconnect logic examines this address. If it falls within the pre-defined range for peripherals, the request is "hijacked" and routed to the APB bus instead of main memory.
+#### 📦 Included Peripherals
+- `spi_apb_slave` + `spi_driver` — SPI Master
+- `i2c_apb_slave` + `i2c_driver` — I2C Master
+- `usart_apb_slave` + `usart_driver` — Serial communication
 
-The peripheral receives the transaction and performs the requested action.
+Each peripheral supports **basic transmission** and responds to **read/write transactions** issued via MMIO.
 
-d. Bus Arbitration and Interconnect (The Priority Mechanism)
-This is the most critical component in a multi-core design. Since both cores share one APB bus, a mechanism is needed to resolve conflicts.
+---
 
-Request Detection: The arbiter continuously monitors the output of both cores. In this design, a request is signaled when a core generates a non-zero alu_result_out.
+### 🧩 Memory-Mapped I/O (MMIO)
 
-Round-Robin Priority: To ensure fairness, a simple and effective round-robin arbitration scheme is used.
+- Cores interact with peripherals via **standard load (`lw`) and store (`sw`) instructions**.
+- **Peripheral registers** are mapped into specific memory ranges.
+- No special instructions are needed—just **memory reads/writes** to specific addresses.
 
-After reset, Core 1 is given priority.
+#### 🔄 Flow:
+1. Core issues a `sw` or `lw` instruction.
+2. Address falls into peripheral range.
+3. Interconnect routes the access to the APB bus.
+4. Peripheral receives the transaction and processes it.
 
-If Core 1 is granted access to the bus, priority immediately switches to Core 2 for the next cycle.
+---
 
-If Core 2 is granted access, priority switches back to Core 1.
+### 🧩 Bus Arbitration and Interconnect
 
-If the core with priority is not making a request, the arbiter will grant access to the other core if it is making a request.
+- Both cores **share the APB bus**, so a **round-robin arbiter** ensures **fair and conflict-free access**.
+- **Priority toggles** between cores after each successful access.
 
-Interconnect (Mux): Once the arbiter grants access to a core, the interconnect acts as a large multiplexer. It takes the relevant outputs from the granted core (alu_result_out and reg_data1_out) and routes them to the APB bus's PWDATA and PADDR inputs, respectively.
+#### 🚦 Arbiter Logic:
+- Start: Core 1 has priority.
+- After Core 1 uses the bus → priority → Core 2.
+- If priority core is idle, the other core gets access.
+- **Multiplexer-based interconnect** routes selected core's address/data lines to the APB interface.
 
-3. File Structure and Key Modules
-dual_core_soc.sv: The top-level module. This file instantiates the two cores and the peripheral subsystem and contains the bus arbiter and interconnect logic.
+---
 
-riscv_core.sv / riscv2core.sv: The two independent RISC-V CPU core modules.
+## 📁 File Structure
 
-soc_top.sv: The APB peripheral subsystem. It instantiates all the slave modules and handles address decoding.
+| File | Description |
+|------|-------------|
+| `dual_core_soc.sv` | Top-level module: instantiates cores, interconnect, arbiter, and peripheral subsystem |
+| `riscv_core.sv` & `riscv2core.sv` | Two independent RISC-V CPU cores |
+| `soc_top.sv` | Peripheral subsystem wrapper with APB address decoder |
+| `spi_apb_slave.sv`, `i2c_apb_slave.sv`, `usart_apb_slave.sv` | APB interface logic for each protocol |
+| `spi_driver.sv`, `i2c_driver.sv`, `usart_driver.sv` | Protocol-level control logic (state machines) |
+| `dual_core_soc_tb.sv` | Testbench to run full SoC simulation |
+| `README.md` | Project documentation |
+| `.gitignore` | Git exclusions for Vivado-generated files |
+| `scripts/create_project.tcl` | Vivado project recreation script (optional) |
 
-spi_apb_slave.sv, i2c_apb_slave.sv, usart_apb_slave.sv: These modules are the "glue" logic that connects the APB bus to the underlying driver logic.
+---
 
-spi_driver.sv, i2c_driver.sv, usart_driver.sv: These are the state machines that implement the actual logic for each communication protocol.
+## ▶️ How to Run the Simulation
 
-dual_core_soc_tb.sv: The main testbench. This file instantiates the entire SoC, loads programs into the cores, and monitors the peripheral outputs to verify correct operation.
+### ✅ Requirements:
+- Any Verilog simulator (Vivado XSim, ModelSim, Verilator)
 
-4. How to Run the Simulation
-To compile and run this project, you will need a Verilog simulator (e.g., Vivado XSim, ModelSim, Verilator).
+### 📌 Steps:
 
-Create a New Project: In your simulator, create a new project and add all the Verilog (.sv) source files from this repository.
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/s-ohith/Verilog-SoC-Dual-RISCV-Core-with-Bus-Arbiter.git
+   cd Verilog-SoC-Dual-RISCV-Core-with-Bus-Arbiter
+<img width="1869" height="869" alt="image" src="https://github.com/user-attachments/assets/c8457c5c-27ba-4dbc-b833-b069420f3101" />
+<img width="1855" height="852" alt="image" src="https://github.com/user-attachments/assets/5ad0e830-3bd7-4d4a-b80d-1ee5c3e2e5ce" />
 
-Set the Top Module: Configure your simulation settings to use dual_core_soc_tb.sv as the top-level module for the simulation.
+## 🖥️ Sample Output
 
-Compile: Compile all the source files.
+```text
+[INFO] Memory-Mapped Dual-Core SoC Testbench Started
+[INFO] Memory Map & Test Blocks:
+[INFO]   0x00000000 - 0x10000000 -> USART (Base: 0x200) -> test_usart_peripheral()
+[INFO]   0x10000001 - 0x20000000 -> SPI   (Base: 0x000) -> test_spi_peripheral()
+[INFO]   0x20000001 - 0x30000000 -> I2C   (Base: 0x100) -> test_i2c_peripheral()
+[INFO]   Above 0x30000000        -> USART (Default)    -> test_usart_peripheral()
+[INFO] Core priority alternates every 4 cycles
 
-Run Simulation: Launch the simulation. The testbench is self-contained and will perform the following steps automatically:
+[TEST] Starting USART Transaction - ALU: 0x00000001
+=== CYCLE 0 ===
+Priority Core: CORE1
+Primary   - ALU: 0x00000001, RS1: 0x00
+Secondary - ALU: 0x00000000, RS1: 0x0b
+Peripheral: USART (ALU: 0x00000001 <= 0x10000000) - Test Block: test_usart_peripheral()
 
-It will use hierarchical paths to load a simple program into the internal instruction memory of each core.
-
-Core 1 will be programmed to write a specific data byte to the SPI peripheral.
-
-Core 2 will be programmed to write a different data byte to the USART peripheral.
-
-The testbench will then apply and release the reset signal.
-
-Observe the Output:
-
-Waveform Viewer: Add the signals from the dual_core_soc and the testbench to your waveform viewer. You will be able to see the cores executing instructions, the arbiter granting access, and the APB transactions occurring.
-
-Simulation Console: The testbench includes monitor tasks that act as virtual receivers for the SPI and USART peripherals. When a core successfully transmits a byte, a message will be printed to the console confirming that the data was received correctly.
-
-This process provides a complete, end-to-end verification of the entire SoC design.
+Time: 125000 ns | Read from 0x204 = 0x0
+Time: 125000 ns | USART Transaction Complete!
+Mapped PADDR: 0x200, PWDATA: 0x00000003
+STATUS: Peripheral transaction in progress...
