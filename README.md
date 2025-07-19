@@ -25,6 +25,8 @@ This project implements a **multi-core RISC-V System-on-Chip (SoC)** in **System
 ---
 
 ## 🧠 Project Overview
+![Uploading image.png…]()
+
 
 This repository contains a complete and synthesizable SoC designed in Verilog, showcasing a **dual-core RISC-V processor architecture** that runs **two separate programs** concurrently. These cores share access to a **common set of peripherals**—SPI, I2C, and USART—via a **custom bus arbiter** that implements a **round-robin priority mechanism**.
 
